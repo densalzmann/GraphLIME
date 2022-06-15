@@ -22,12 +22,14 @@ class GraphLIME:
         self.cached = cached
         self.cached_result = None
 
+        ## Enables the evaluation mode, and checks that the model do not train
         # self.model.eval()
 
     def __flow__(self):
-        for module in self.model.modules():
-            if isinstance(module, MessagePassing):
-                return module.flow
+        ## FIX: PyGOD object has no attribute 'modules'
+        # for module in self.model.modules():
+        #     if isinstance(module, MessagePassing):
+        #         return module.flow
 
         return 'source_to_target'
 
@@ -50,7 +52,9 @@ class GraphLIME:
 
         return x, y, edge_index, mapping, edge_mask, kwargs
 
-    def __init_predict__(self, x, edge_index, **kwargs):
+    ## FIX: Provide data format needed for evaluating pygod model
+    # def __init_predict__(self, x, edge_index, **kwargs):
+    def __init_predict__(self, x, data):
         if self.cached and self.cached_result is not None:
             if x.size(0) != self.cached_result.size(0):
                 raise RuntimeError(
@@ -60,8 +64,12 @@ class GraphLIME:
         # get the initial prediction
         if not self.cached or self.cached_result is None:
             with torch.no_grad():
-                log_logits = self.model(x=x, edge_index=edge_index, **kwargs)
-                probas = log_logits.exp()
+                ## FIX: evaluate outlier scores as in pygod && output are already probabilities
+                # log_logits = self.model(x=x, edge_index=edge_index, **kwargs)
+                # probas = log_logits.exp()
+                probas = np.log(self.model.decision_function(data))
+                ## FIX: cast numpy arrays to torch tensors, since 'numpy.ndarray' object has no attribute 'detach'
+                probas = torch.from_numpy(probas).reshape(-1,1)
 
             self.cached_result = probas
 
@@ -97,9 +105,12 @@ class GraphLIME:
         G = G / (np.linalg.norm(G, ord='fro', axis=(0, 1), keepdims=True) + 1e-10)
 
         return G
-        
-    def explain_node(self, node_idx, x, edge_index, **kwargs):
-        probas = self.__init_predict__(x, edge_index, **kwargs)
+
+    ## FIX: Provide data format needed for evaluating pygod model
+    # def explain_node(self, node_idx, x, edge_index, **kwargs):
+    def explain_node(self, node_idx, x, edge_index, data, **kwargs):
+        # probas = self.__init_predict__(x, edge_index, **kwargs)
+        probas = self.__init_predict__(x, data)
 
         x, probas, _, _, _, _ = self.__subgraph__(
             node_idx, x, probas, edge_index, **kwargs)
