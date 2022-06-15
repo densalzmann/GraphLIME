@@ -22,7 +22,7 @@ class GraphLIME:
         self.cached = cached
         self.cached_result = None
 
-        self.model.eval()
+        # self.model.eval()
 
     def __flow__(self):
         for module in self.model.modules():
